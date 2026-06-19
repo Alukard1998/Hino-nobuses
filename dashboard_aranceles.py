@@ -2213,11 +2213,8 @@ hino_real_total_full = df_hino_sim[[f"{m}_VENTAS_REAL" for m in sim_months]].sum
 hino_lost_total_full = hino_sim_total_full - hino_real_total_full
 
 # Market Share Calculations
-market_totals_ene_may = [df_brands_clean[m].sum() for m in sim_months]
-total_market_all = sum(market_totals_ene_may)
-hino_real_share = (hino_real_total_full / total_market_all) * 100 if total_market_all > 0 else 0.0
-total_market_sim = total_market_all + (1 - shift_factor) * hino_lost_total_full
-hino_sim_share = (hino_sim_total_full / total_market_sim) * 100 if total_market_sim > 0 else 0.0
+hino_real_share = (hino_real_total_full / 6751) * 100
+hino_sim_share = (hino_sim_total_full / 6751) * 100
 
 rev_real_total_full = sum((df_hino_sim[f"{m}_VENTAS_REAL"] * df_hino_sim[f"{m}_PRECIO_REAL"]).sum() for m in sim_months)
 rev_sim_total_full = sum((df_hino_sim[f"{m}_VENTAS_SIM"] * df_hino_sim[f"{m}_PRECIO_SIM"]).sum() for m in sim_months)
