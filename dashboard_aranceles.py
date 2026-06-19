@@ -953,11 +953,16 @@ else:
             )
 
 # Add Tariff bar chart on the secondary Y axis
-tariff_values = [0.0, 0.3, 0.5, 0.5, 1.0, 0.0]
+if view_type == "Individual Model":
+    is_series_700 = (selected_series == "SERIE 700") or (selected_segment in ["HEAVY", "TRACTO"])
+    t_vals_prices = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0] if is_series_700 else [0.0, 0.3, 0.5, 0.5, 1.0, 0.0]
+else:
+    t_vals_prices = [0.0, 0.3, 0.5, 0.5, 1.0, 0.0]
+
 fig_prices.add_trace(
     go.Bar(
         x=months_labels,
-        y=tariff_values,
+        y=t_vals_prices,
         name="Colombia Tariff (%)",
         marker_color="rgba(192, 57, 43, 0.15)",
         marker_line=dict(color="rgba(192, 57, 43, 0.3)", width=1),
@@ -1356,7 +1361,10 @@ def render_segment_analysis(segment_id, segment_label, series_label):
     months_db_list = ["2026_01", "2026_02", "2026_03", "2026_04", "2026_05"]
     months_labels_ene_may = ["January", "February", "March", "April", "May"]
     months_price_cols = ["JANUARY", "FEBRUARY", "MARCH", "APRIL", "MAY"]
-    tariffs = [0.0, 0.3, 0.5, 0.5, 1.0]
+    if segment_id in ["HEAVY", "TRACTO"]:
+        tariffs = [0.0, 0.0, 0.0, 0.0, 0.0]
+    else:
+        tariffs = [0.0, 0.3, 0.5, 0.5, 1.0]
 
     # Calculate monthly metrics
     hino_real_seg = []
@@ -1742,11 +1750,16 @@ else:
             )
 
 # Add Tariff bar chart on the secondary Y axis
-tariff_values = [0.0, 0.3, 0.5, 0.5, 1.0, 0.0]
+if cost_view_type == "Individual Model":
+    is_series_700 = (selected_cost_series == "SERIE 700") or (selected_cost_segment in ["HEAVY", "TRACTO"])
+    t_vals_costs = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0] if is_series_700 else [0.0, 0.3, 0.5, 0.5, 1.0, 0.0]
+else:
+    t_vals_costs = [0.0, 0.3, 0.5, 0.5, 1.0, 0.0]
+
 fig_costs.add_trace(
     go.Bar(
         x=months_labels,
-        y=tariff_values,
+        y=t_vals_costs,
         name="Colombia Tariff (%)",
         marker_color="rgba(192, 57, 43, 0.15)",
         marker_line=dict(color="rgba(192, 57, 43, 0.3)", width=1),
@@ -1797,6 +1810,7 @@ for idx_s, s in enumerate(series_list):
         continue
         
     c_values_s = [df_s[m].mean() for m in months_cols]
+    t_vals_s = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0] if s == "SERIE 700" else tariff_values
     
     fig_s = make_subplots(specs=[[{"secondary_y": True}]])
     
@@ -1819,7 +1833,7 @@ for idx_s, s in enumerate(series_list):
     fig_s.add_trace(
         go.Bar(
             x=months_labels,
-            y=tariff_values,
+            y=t_vals_s,
             name="Tariff (%)",
             marker_color="rgba(192, 57, 43, 0.12)",
             marker_line=dict(color="rgba(192, 57, 43, 0.25)", width=1),

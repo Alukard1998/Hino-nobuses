@@ -302,8 +302,8 @@ def calculate_simulation(elasticity_light=-4.6, elasticity_other=-4.6, shift_fac
         # Get elasticity
         if segment == "LIGHT":
             eps = elasticity_light
-        elif segment == "OTROS":
-            eps = 0.0 # No arancel impact on other minor Hino models
+        elif segment == "OTROS" or row['SERIES'] == "SERIE 700":
+            eps = 0.0 # No arancel impact on other minor Hino models or Series 700 (Japanese origin)
         else:
             eps = elasticity_other
             
@@ -321,8 +321,8 @@ def calculate_simulation(elasticity_light=-4.6, elasticity_other=-4.6, shift_fac
             p_month_name = months_map[m_db]
             p_act = p_row[p_month_name]
             
-            # If segment is OTROS, we assume simulated price = real price (no arancel impact)
-            if segment == "OTROS":
+            # If segment is OTROS or series is SERIE 700, simulated price = real price (no arancel impact)
+            if segment == "OTROS" or row['SERIES'] == "SERIE 700":
                 p_sim = p_act
             else:
                 p_sim = p_jan
