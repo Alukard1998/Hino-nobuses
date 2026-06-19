@@ -427,6 +427,43 @@ def calculate_simulation(elasticity_light=-4.6, elasticity_other=-4.6, shift_fac
     
     return df_hino_sim, df_chev_sim, df_fuso_monthly, df_prices
 
+def load_total_market_data():
+    """Load total market sales data (excluding summary rows) from AEADE."""
+    df_tga = pd.read_excel(historical_data_path, sheet_name="TD GENERAL A", header=None)
+    
+    # Parse headers by combining Year (Row 9) and Month (Row 10)
+    new_headers = []
+    for col in range(df_tga.shape[1]):
+        val_r9 = df_tga.iloc[9, col]
+        val_r10 = df_tga.iloc[10, col]
+        
+        if col < 10:
+            new_headers.append(val_r10 if pd.notna(val_r10) else f"Col_{col}")
+        else:
+            try:
+                year = int(float(val_r9))
+                month = int(float(val_r10))
+                new_headers.append(f"{year}_{month:02d}")
+            except:
+                if pd.notna(val_r9):
+                    new_headers.append(str(val_r9).strip().replace(" ", "_"))
+                else:
+                    new_headers.append(f"Col_{col}")
+                    
+    df_sales = df_tga.iloc[11:].copy()
+    df_sales.columns = new_headers
+    df_sales = df_sales[df_sales['SEGMENTO'] != 'BUS']
+    
+    # Filter out summary rows (double counting)
+    df_brands_clean = df_sales[~df_sales['MARCA'].str.startswith('Total', na=False)].copy()
+    
+    # Convert columns to numeric
+    months_2026 = ["2026_01", "2026_02", "2026_03", "2026_04", "2026_05"]
+    for col in months_2026:
+        df_brands_clean[col] = pd.to_numeric(df_brands_clean[col], errors='coerce').fillna(0)
+        
+    return df_brands_clean
+
 def forecast_june_holt_winters():
     """Forecast June 2026 sales volume using Seasonal Holt-Winters model."""
     df_hino, _, _, _ = load_sales_data()

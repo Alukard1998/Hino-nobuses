@@ -8,7 +8,7 @@ import sys
 
 # Add current directory to path
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
-from simulador_logica import calculate_simulation, load_sales_data, load_hino_costs, forecast_june_holt_winters
+from simulador_logica import calculate_simulation, load_sales_data, load_hino_costs, forecast_june_holt_winters, load_total_market_data
 
 # Set page layout
 st.set_page_config(
@@ -264,6 +264,19 @@ def generate_excel_report_bytes(elasticity_light, elasticity_other, shift_factor
         
         wb = openpyxl.Workbook()
         
+        # Load total market data to calculate true segment market share (excluding double-counting totals)
+        df_brands_clean = load_total_market_data()
+        months_db_list_excel = ["2026_01", "2026_02", "2026_03", "2026_04", "2026_05"]
+        market_totals = {m: df_brands_clean[m].sum() for m in months_db_list_excel}
+        
+        # Estimate June 2026 total market based on Jan-May Hino+Isuzu share
+        hino_isuzu_jan_may = sum(df_h_sim[f"{m}_VENTAS_REAL"].sum() + df_c_sim.loc[m, "CHEV_TOTAL_REAL"] for m in months_db_list_excel)
+        market_jan_may = sum(market_totals.values())
+        ratio_m = hino_isuzu_jan_may / market_jan_may if market_jan_may > 0 else 1.0
+        
+        hino_isuzu_june_real = df_h_sim["2026_06_VENTAS_REAL"].sum() + df_c_sim.loc["2026_06", "CHEV_TOTAL_REAL"]
+        market_totals["2026_06"] = hino_isuzu_june_real / ratio_m if ratio_m > 0 else hino_isuzu_june_real
+        
         # Colors
         C_DB = "1A3A5C"
         C_RED = "C0392B"
@@ -403,8 +416,11 @@ def generate_excel_report_bytes(elasticity_light, elasticity_other, shift_factor
             c_real = df_c_sim.loc[m_db, "CHEV_TOTAL_REAL"]
             c_sim = df_c_sim.loc[m_db, "CHEV_TOTAL_SIM"]
             
-            ms_real = h_real / (h_real + c_real) if (h_real + c_real) > 0 else 0
-            ms_sim = h_sim / (h_sim + c_sim) if (h_sim + c_sim) > 0 else 0
+            tot_market_real = market_totals[m_db]
+            tot_market_sim = tot_market_real + (h_sim - h_real) + (c_sim - c_real)
+            
+            ms_real = h_real / tot_market_real if tot_market_real > 0 else 0
+            ms_sim = h_sim / tot_market_sim if tot_market_sim > 0 else 0
             
             # Write row
             def write_cell(c_ref, val, num_fmt=None, bold=False, fill_col=None, text_col="000000", align="center"):
@@ -446,8 +462,11 @@ def generate_excel_report_bytes(elasticity_light, elasticity_other, shift_factor
         tot_p_avg_sim = rev_tot_sim / tot_h_sim
         tot_p_var = (tot_p_avg_real - tot_p_avg_sim) / tot_p_avg_sim
         
-        tot_ms_real = tot_h_real / (tot_h_real + tot_c_real)
-        tot_ms_sim = tot_h_sim / (tot_h_sim + tot_c_sim)
+        total_market_real_all = sum(market_totals[m] for m in all_months)
+        total_market_sim_all = total_market_real_all + (tot_h_sim - tot_h_real) + (tot_c_sim - tot_c_real)
+        
+        tot_ms_real = tot_h_real / total_market_real_all if total_market_real_all > 0 else 0
+        tot_ms_sim = tot_h_sim / total_market_sim_all if total_market_sim_all > 0 else 0
         
         write_cell(f"A{tot_row}", "CUMULATIVE TOTAL", fill_col="EAECEE", bold=True, align="left")
         write_cell(f"B{tot_row}", "", fill_col="EAECEE")
@@ -825,6 +844,7 @@ else:
         sim_model_type, hino_share_2025, market_growth_rate
     )
 df_hino_raw, df_chev_raw, df_fuso_raw, months_db = load_sales_data()
+df_brands_clean = load_total_market_data()
 
 # Dashboard main title (light mode style)
 st.markdown("<h1 class='dashboard-title'>Teojama Comercial</h1>", unsafe_allow_html=True)
@@ -1259,25 +1279,29 @@ fig_comp.update_yaxes(showgrid=True, gridcolor="#f1f5f9")
 st.plotly_chart(fig_comp, use_container_width=True)
 
 # Write summary metrics table for the block
+# Load total market data to calculate true segment market share (excluding double-counting totals)
+df_brands_clean = load_total_market_data()
+market_totals_ene_may = [df_brands_clean[m].sum() for m in months_db_list]
+total_market_all = sum(market_totals_ene_may)
+
 total_h = sum(h_real_ene_may)
 total_c = sum(chev_totals_ene_may)
-tot_pool = total_h + total_c
 
-st.write(f"**Cumulative Sales (Jan-May 2026):**")
-st.write(f"- **Isuzu:** {total_c:.0f} units ({(total_c/tot_pool)*100:.1f}% share)")
-st.write(f"- **Hino:** {total_h:.0f} units ({(total_h/tot_pool)*100:.1f}% share)")
+st.write(f"**Cumulative Sales (Jan-May 2026) and True Market Share:**")
+st.write(f"- **Isuzu:** {total_c:.0f} units ({(total_c/total_market_all)*100:.1f}% true market share)")
+st.write(f"- **Hino:** {total_h:.0f} units ({(total_h/total_market_all)*100:.1f}% true market share)")
 
-# Calculate monthly Market Share (%)
+# Calculate monthly True Market Share (%)
 share_hino = []
 share_chev = []
 
 for idx, m in enumerate(months_db_list):
     h_val = h_real_ene_may[idx]
     c_val = chev_totals_ene_may[idx]
-    tot = h_val + c_val
+    tot_m = market_totals_ene_may[idx]
     
-    share_hino.append((h_val / tot) * 100 if tot > 0 else 0)
-    share_chev.append((c_val / tot) * 100 if tot > 0 else 0)
+    share_hino.append((h_val / tot_m) * 100 if tot_m > 0 else 0)
+    share_chev.append((c_val / tot_m) * 100 if tot_m > 0 else 0)
 
 fig_share = go.Figure()
 fig_share.add_trace(go.Scatter(
@@ -1344,9 +1368,11 @@ def render_segment_analysis(segment_id, segment_label, series_label):
     if segment_id == "GENERAL":
         df_chev_seg = df_chev_raw
         df_prices_seg = df_prices_clean
+        df_market_seg = df_brands_clean
     else:
         df_chev_seg = df_chev_raw[df_chev_raw['SEGMENTO'] == segment_id]
         df_prices_seg = df_prices_clean[df_prices_clean['SEGMENTO'] == segment_id]
+        df_market_seg = df_brands_clean[df_brands_clean['SEGMENTO'] == segment_id]
     
     for i, m_db in enumerate(months_db_list):
         p_col = months_price_cols[i]
@@ -1362,9 +1388,9 @@ def render_segment_analysis(segment_id, segment_label, series_label):
         c_val = df_chev_seg[m_db].sum() if not df_chev_seg.empty else 0.0
         chev_real_seg.append(c_val)
         
-        # Share (Hino vs Chevrolet only)
-        tot = h_val + c_val
-        share_hino_seg.append((h_val / tot) * 100 if tot > 0 else 0.0)
+        # Share (True segment market share)
+        tot_m = df_market_seg[m_db].sum() if not df_market_seg.empty else 0.0
+        share_hino_seg.append((h_val / tot_m) * 100 if tot_m > 0 else 0.0)
         
         # Average Hino price in this segment
         avg_p = df_prices_seg[p_col].mean() if not df_prices_seg.empty else 0.0

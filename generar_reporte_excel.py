@@ -9,7 +9,7 @@ import sys
 
 # Add directory to path to import local module
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
-from simulador_logica import calculate_simulation, load_hino_costs, forecast_june_holt_winters
+from simulador_logica import calculate_simulation, load_hino_costs, forecast_june_holt_winters, load_total_market_data
 
 # Colors
 C_DARK_BLUE   = "1A3A5C"   # Teojama / Hino Navy
@@ -64,6 +64,19 @@ def generate_excel_report(elasticity_light=-4.6, elasticity_heavy=-4.6, shift_fa
     )
     
     wb = openpyxl.Workbook()
+    
+    # Load total market data to calculate true segment market share (excluding double-counting totals)
+    df_brands_clean = load_total_market_data()
+    months_db_list_excel = ["2026_01", "2026_02", "2026_03", "2026_04", "2026_05"]
+    market_totals = {m: df_brands_clean[m].sum() for m in months_db_list_excel}
+    
+    # Estimate June 2026 total market based on Jan-May Hino+Isuzu share
+    hino_isuzu_jan_may = sum(df_hino_sim[f"{m}_VENTAS_REAL"].sum() + df_chev_sim.loc[m, "CHEV_TOTAL_REAL"] for m in months_db_list_excel)
+    market_jan_may = sum(market_totals.values())
+    ratio_m = hino_isuzu_jan_may / market_jan_may if market_jan_may > 0 else 1.0
+    
+    hino_isuzu_june_real = df_hino_sim["2026_06_VENTAS_REAL"].sum() + df_chev_sim.loc["2026_06", "CHEV_TOTAL_REAL"]
+    market_totals["2026_06"] = hino_isuzu_june_real / ratio_m if ratio_m > 0 else hino_isuzu_june_real
     
     # -------------------------------------------------------------
     # TAB 1: RESUMEN EJECUTIVO
@@ -185,8 +198,11 @@ def generate_excel_report(elasticity_light=-4.6, elasticity_heavy=-4.6, shift_fa
         c_real = df_chev_sim.loc[m_db, "CHEV_TOTAL_REAL"]
         c_sim = df_chev_sim.loc[m_db, "CHEV_TOTAL_SIM"]
         
-        ms_real = h_real / (h_real + c_real) if (h_real + c_real) > 0 else 0
-        ms_sim = h_sim / (h_sim + c_sim) if (h_sim + c_sim) > 0 else 0
+        tot_market_real = market_totals[m_db]
+        tot_market_sim = tot_market_real + (h_sim - h_real) + (c_sim - c_real)
+        
+        ms_real = h_real / tot_market_real if tot_market_real > 0 else 0
+        ms_sim = h_sim / tot_market_sim if tot_market_sim > 0 else 0
         
         # Write values
         data_cell(ws1, f"A{row}", m_lbl, bold=True, align="left")
@@ -219,8 +235,11 @@ def generate_excel_report(elasticity_light=-4.6, elasticity_heavy=-4.6, shift_fa
     tot_p_avg_sim = (sum((df_hino_sim[f"{m}_VENTAS_SIM"] * df_hino_sim[f"{m}_PRECIO_SIM"]).sum() for m in all_months)) / tot_h_sim
     tot_p_var = (tot_p_avg_real - tot_p_avg_sim) / tot_p_avg_sim
     
-    tot_ms_real = tot_h_real / (tot_h_real + tot_c_real)
-    tot_ms_sim = tot_h_sim / (tot_h_sim + tot_c_sim)
+    total_market_real_all = sum(market_totals[m] for m in all_months)
+    total_market_sim_all = total_market_real_all + (tot_h_sim - tot_h_real) + (tot_c_sim - tot_c_real)
+    
+    tot_ms_real = tot_h_real / total_market_real_all if total_market_real_all > 0 else 0
+    tot_ms_sim = tot_h_sim / total_market_sim_all if total_market_sim_all > 0 else 0
     
     data_cell(ws1, f"A{tot_row}", "CUMULATIVE TOTAL", fill="EAECEE", bold=True, align="left")
     data_cell(ws1, f"B{tot_row}", "", fill="EAECEE")
