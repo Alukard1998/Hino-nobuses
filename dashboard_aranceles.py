@@ -1750,7 +1750,7 @@ else:
             )
 
 # Add Tariff bar chart on the secondary Y axis
-if cost_view_type == "Individual Model":
+if view_cost_type == "Individual Model":
     is_series_700 = (selected_cost_series == "SERIE 700") or (selected_cost_segment in ["HEAVY", "TRACTO"])
     t_vals_costs = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0] if is_series_700 else [0.0, 0.3, 0.5, 0.5, 1.0, 0.0]
 else:
