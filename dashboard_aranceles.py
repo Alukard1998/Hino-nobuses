@@ -603,14 +603,14 @@ def generate_excel_report_bytes(elasticity_light, elasticity_other, shift_factor
             ws3.column_dimensions[col].width = w
             
         ws3.merge_cells("A1:L1")
-        ws3["A1"] = "HINO IMPORT COST VS. LIST PRICE MARGIN VARIATION ANALYSIS (JAN-MAY 2026)"
+        ws3["A1"] = "HINO IMPORT COST VS. LIST PRICE VAR. GAP ANALYSIS (JAN-MAY 2026)"
         ws3["A1"].font = Font(name="Arial", size=12, bold=True, color=C_WT)
         ws3["A1"].fill = PatternFill("solid", fgColor=C_DB)
         ws3["A1"].alignment = Alignment(horizontal="center", vertical="center")
         ws3.row_dimensions[1].height = 35
         
         ws3.merge_cells("A2:L2")
-        ws3["A2"] = f"Financial analysis of margin variations comparing percentage cost changes vs. price changes | Parameters: Elasticity Light={elasticity_light}, Heavy={elasticity_other}, Shift={shift_factor*100}%, June Proj={june_sales_val} | Generated: {pd.Timestamp.now().strftime('%d/%m/%Y')}"
+        ws3["A2"] = f"Financial analysis of cost vs. price variation gaps | Parameters: Elasticity Light={elasticity_light}, Heavy={elasticity_other}, Shift={shift_factor*100}%, June Proj={june_sales_val} | Generated: {pd.Timestamp.now().strftime('%d/%m/%Y')}"
         ws3["A2"].font = Font(name="Arial", size=8, italic=True, color="7F8C8D")
         ws3["A2"].alignment = Alignment(horizontal="center", vertical="center")
         ws3["A2"].fill = PatternFill("solid", fgColor="EBF5FB")
@@ -671,7 +671,7 @@ def generate_excel_report_bytes(elasticity_light, elasticity_other, shift_factor
         # Section 2: Detailed Table
         start_table_row = 8
         ws3.merge_cells(f"A{start_table_row}:L{start_table_row}")
-        ws3[f"A{start_table_row}"] = "MODEL-BY-MODEL COST AND PRICE MARGIN VARIATION BREAKDOWN"
+        ws3[f"A{start_table_row}"] = "MODEL-BY-MODEL COST AND PRICE VAR. GAP BREAKDOWN"
         ws3[f"A{start_table_row}"].font = Font(name="Arial", size=10, bold=True, color=C_WT)
         ws3[f"A{start_table_row}"].fill = PatternFill("solid", fgColor=C_RED)
         ws3[f"A{start_table_row}"].alignment = Alignment(horizontal="center", vertical="center")
@@ -679,7 +679,7 @@ def generate_excel_report_bytes(elasticity_light, elasticity_other, shift_factor
         
         headers3 = [
             "Hino Model", "Series", "Sales (units)", "Jan Cost", "May Cost",
-            "Cost Inc. ($)", "Cost Inc. (%)", "Jan Price", "May Price", "Price Inc. ($)", "Price Inc. (%)", "Net Margin Var (p.p.)"
+            "Cost Inc. ($)", "Cost Inc. (%)", "Jan Price", "May Price", "Price Inc. ($)", "Price Inc. (%)", "Var. Gap (p.p.)"
         ]
         header_row3 = start_table_row + 1
         ws3.row_dimensions[header_row3].height = 25
@@ -747,7 +747,7 @@ def generate_excel_report_bytes(elasticity_light, elasticity_other, shift_factor
         # Series summary in Excel Sheet 3
         start_s_row = tot_row3 + 3
         ws3.merge_cells(f"A{start_s_row}:L{start_s_row}")
-        ws3[f"A{start_s_row}"] = "SERIES-LEVEL COST AND PRICE MARGIN VARIATION SUMMARY (WEIGHTED AVERAGES)"
+        ws3[f"A{start_s_row}"] = "SERIES-LEVEL COST AND PRICE VAR. GAP SUMMARY (WEIGHTED AVERAGES)"
         ws3[f"A{start_s_row}"].font = Font(name="Arial", size=10, bold=True, color=C_WT)
         ws3[f"A{start_s_row}"].fill = PatternFill("solid", fgColor=C_RED)
         ws3[f"A{start_s_row}"].alignment = Alignment(horizontal="center", vertical="center")
@@ -757,7 +757,7 @@ def generate_excel_report_bytes(elasticity_light, elasticity_other, shift_factor
         ws3.row_dimensions[hdr_row_s].height = 25
         headers_s = [
             "Hino Series", "", "Sales (units)", "Jan Cost (W)", "May Cost (W)",
-            "Cost Inc. ($)", "Cost Inc. (%)", "Jan Price (W)", "May Price (W)", "Price Inc. ($)", "Price Inc. (%)", "Net Margin Var (p.p.)"
+            "Cost Inc. ($)", "Cost Inc. (%)", "Jan Price (W)", "May Price (W)", "Price Inc. ($)", "Price Inc. (%)", "Var. Gap (p.p.)"
         ]
         for col_idx, text in enumerate(headers_s):
             cell_ref = f"{get_column_letter(col_idx + 1)}{hdr_row_s}"
@@ -2146,7 +2146,7 @@ for _, row_val in df_tab.iterrows():
         "May Price": f"${row_val['MAY_PRICE']:,.0f}",
         "Price Inc. ($)": f"${row_val['price_inc']:+,.0f}",
         "Price Inc. (%)": f"{row_val['price_inc_pct']:+.1f}%",
-        "Net Margin Var (p.p.)": f"{row_val['margin_var_pp']:+.1f}%"
+        "Var. Gap (p.p.)": f"{row_val['margin_var_pp']:+.1f}%"
     })
 df_table_display = pd.DataFrame(table_rows)
 df_table_display = df_table_display.sort_values(by="Sales Volume (units)", ascending=False)
@@ -2185,7 +2185,7 @@ for series_name, df_s in df_tab.groupby('SERIES'):
         "May Price (Weighted)": f"${w_price_may:,.0f}",
         "Price Inc. ($)": f"${w_price_inc:+,.0f}",
         "Price Inc. (%)": f"{w_price_inc_pct:+.1f}%",
-        "Net Margin Var (p.p.)": f"{w_margin_var:+.1f}%"
+        "Var. Gap (p.p.)": f"{w_margin_var:+.1f}%"
     })
 
 df_series_display = pd.DataFrame(series_rows)
